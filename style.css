@@ -40,8 +40,7 @@ body {
   padding: max(20px, env(safe-area-inset-top)) 24px 12px;
 }
 .app-title {
-  font-family: 'Source Serif 4', serif;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 22px;
   letter-spacing: 0.01em;
   color: #f2efe6;
@@ -185,7 +184,6 @@ body {
   gap: 12px;
 }
 .word-list .w-word {
-  font-family: 'Source Serif 4', serif;
   font-size: 16px;
   color: #f2efe6;
   font-weight: 600;
@@ -244,22 +242,27 @@ body {
   overflow: hidden;
 }
 .card-word {
-  font-family: 'Source Serif 4', serif;
   font-size: 30px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink);
   margin: 0 0 18px;
   word-break: keep-all;
+}
+.meaning-wrap {
+  position: relative;
+  width: 100%;
 }
 .card-meaning {
   font-size: 17px;
   color: var(--ink);
   margin: 0;
   line-height: 1.6;
+  padding: 14px 16px;
+  min-height: 24px;
 }
 .card-cover {
   position: absolute;
-  inset: 58% 20px 24px;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -352,7 +355,7 @@ body {
   margin-bottom: 14px;
 }
 .modal-header h2 {
-  font-family: 'Source Serif 4', serif;
+  font-weight: 700;
   font-size: 18px;
   color: #f2efe6;
   margin: 0;
