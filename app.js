@@ -1,5 +1,8 @@
 // app.js — 화면 전환 및 UI 로직
-import { addWord, fetchActiveWords, fetchDeletedWords, setChecked, softDeleteWord } from './db.js';
+import {
+  DEFAULT_FOLDER_ID, ensureDefaultFolder, fetchFolders, addFolder, renameFolder,
+  addWord, fetchActiveWords, fetchDeletedWords, setChecked, softDeleteWord,
+} from './db.js';
 
 // ---------- DOM refs ----------
 const screens = document.querySelectorAll('.screen');
@@ -22,6 +25,14 @@ const deletedListItems = document.getElementById('deletedListItems');
 const deletedEmpty = document.getElementById('deletedEmpty');
 const closeDeletedBtn = document.getElementById('closeDeletedBtn');
 
+const folderSwitchBtn = document.getElementById('folderSwitchBtn');
+const currentFolderNameEl = document.getElementById('currentFolderName');
+const folderModal = document.getElementById('folderModal');
+const closeFolderBtn = document.getElementById('closeFolderBtn');
+const folderListItems = document.getElementById('folderListItems');
+const newFolderForm = document.getElementById('newFolderForm');
+const newFolderInput = document.getElementById('newFolderInput');
+
 const progressLabel = document.getElementById('progressLabel');
 const reshuffleBtn = document.getElementById('reshuffleBtn');
 const cardStage = document.getElementById('cardStage');
@@ -38,6 +49,19 @@ const cardControls = document.querySelector('.card-controls');
 let shuffleQueue = [];
 let currentIndex = 0;
 let deleteConfirmTimeout = null;
+let folders = [];
+let currentFolderId = localStorage.getItem('voca_current_folder') || DEFAULT_FOLDER_ID;
+
+// ---------- Init ----------
+(async function init() {
+  try {
+    await ensureDefaultFolder();
+  } catch (err) {
+    console.error(err);
+  }
+  await refreshFolders();
+  refreshWordList();
+})();
 
 // ---------- Screen switching ----------
 navBtns.forEach((btn) => {
@@ -61,6 +85,120 @@ segBtns.forEach((btn) => {
   });
 });
 
+// ---------- Folders ----------
+async function refreshFolders() {
+  try {
+    folders = await fetchFolders();
+  } catch (err) {
+    console.error(err);
+    folders = [];
+  }
+  if (!folders.some((f) => f.id === currentFolderId)) {
+    currentFolderId = folders[0] ? folders[0].id : DEFAULT_FOLDER_ID;
+  }
+  localStorage.setItem('voca_current_folder', currentFolderId);
+  const current = folders.find((f) => f.id === currentFolderId);
+  currentFolderNameEl.textContent = current ? current.name : '폴더';
+}
+
+function renderFolderModal() {
+  folderListItems.innerHTML = '';
+  folders.forEach((f) => {
+    folderListItems.appendChild(buildFolderItem(f));
+  });
+}
+
+function buildFolderItem(f) {
+  const li = document.createElement('li');
+  li.className = 'folder-item';
+  li.classList.toggle('active', f.id === currentFolderId);
+
+  const nameBtn = document.createElement('button');
+  nameBtn.type = 'button';
+  nameBtn.className = 'folder-name-btn';
+  nameBtn.textContent = f.name;
+  nameBtn.addEventListener('click', async () => {
+    currentFolderId = f.id;
+    await refreshFolders();
+    folderModal.hidden = true;
+    refreshWordList();
+  });
+
+  const renameBtn = document.createElement('button');
+  renameBtn.type = 'button';
+  renameBtn.className = 'icon-btn folder-rename-btn';
+  renameBtn.setAttribute('aria-label', '이름 바꾸기');
+  renameBtn.textContent = '✎';
+  renameBtn.addEventListener('click', () => startFolderRename(li, f));
+
+  li.appendChild(nameBtn);
+  li.appendChild(renameBtn);
+  return li;
+}
+
+function startFolderRename(li, f) {
+  li.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'folder-rename-input';
+  input.value = f.name;
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'icon-btn';
+  saveBtn.setAttribute('aria-label', '저장');
+  saveBtn.textContent = '✓';
+
+  const commit = async () => {
+    const newName = input.value.trim();
+    if (newName && newName !== f.name) {
+      try {
+        await renameFolder(f.id, newName);
+        f.name = newName;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    if (f.id === currentFolderId) currentFolderNameEl.textContent = f.name;
+    renderFolderModal();
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') renderFolderModal();
+  });
+  saveBtn.addEventListener('click', commit);
+
+  li.appendChild(input);
+  li.appendChild(saveBtn);
+  input.focus();
+  input.select();
+}
+
+folderSwitchBtn.addEventListener('click', () => {
+  renderFolderModal();
+  folderModal.hidden = false;
+});
+closeFolderBtn.addEventListener('click', () => { folderModal.hidden = true; });
+folderModal.addEventListener('click', (e) => {
+  if (e.target === folderModal) folderModal.hidden = true;
+});
+
+newFolderForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = newFolderInput.value.trim();
+  if (!name) return;
+  try {
+    const ref = await addFolder(name);
+    newFolderInput.value = '';
+    currentFolderId = ref.id;
+    await refreshFolders();
+    renderFolderModal();
+  } catch (err) {
+    console.error(err);
+  }
+});
+
 // ---------- Add word ----------
 wordForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -73,7 +211,7 @@ wordForm.addEventListener('submit', async (e) => {
   saveMsg.textContent = '';
 
   try {
-    await addWord(word, meaning);
+    await addWord(word, meaning, currentFolderId);
     wordInput.value = '';
     meaningInput.value = '';
     wordInput.focus();
@@ -93,7 +231,7 @@ async function refreshWordList() {
   wordListItems.innerHTML = '';
   let words = [];
   try {
-    words = await fetchActiveWords();
+    words = await fetchActiveWords(currentFolderId);
   } catch (err) {
     console.error(err);
   }
@@ -106,20 +244,69 @@ async function refreshWordList() {
 
 function buildWordItem(w, isDeleted) {
   const li = document.createElement('li');
+
+  const info = document.createElement('div');
+  info.className = 'w-info';
   const wordSpan = document.createElement('span');
   wordSpan.className = 'w-word';
   wordSpan.textContent = w.word;
-  if (!isDeleted && w.checked) {
-    const check = document.createElement('span');
-    check.className = 'w-check';
-    check.textContent = '✓';
-    wordSpan.appendChild(check);
-  }
   const meaningSpan = document.createElement('span');
   meaningSpan.className = 'w-meaning';
   meaningSpan.textContent = w.meaning;
-  li.appendChild(wordSpan);
-  li.appendChild(meaningSpan);
+  info.appendChild(wordSpan);
+  info.appendChild(meaningSpan);
+  li.appendChild(info);
+
+  if (!isDeleted) {
+    const actions = document.createElement('div');
+    actions.className = 'w-actions';
+
+    const checkBtnEl = document.createElement('button');
+    checkBtnEl.type = 'button';
+    checkBtnEl.className = 'w-check-btn';
+    checkBtnEl.classList.toggle('checked', !!w.checked);
+    checkBtnEl.setAttribute('aria-label', '체크 표시');
+    checkBtnEl.textContent = '✓';
+    checkBtnEl.addEventListener('click', async () => {
+      const next = !w.checked;
+      w.checked = next;
+      checkBtnEl.classList.toggle('checked', next);
+      try {
+        await setChecked(w.id, next);
+      } catch (err) {
+        console.error(err);
+        w.checked = !next;
+        checkBtnEl.classList.toggle('checked', !next);
+      }
+    });
+
+    const delBtnEl = document.createElement('button');
+    delBtnEl.type = 'button';
+    delBtnEl.className = 'w-del-btn';
+    delBtnEl.setAttribute('aria-label', '삭제');
+    delBtnEl.textContent = '✕';
+    delBtnEl.addEventListener('click', async () => {
+      if (!delBtnEl.classList.contains('confirming')) {
+        delBtnEl.classList.add('confirming');
+        setTimeout(() => delBtnEl.classList.remove('confirming'), 3000);
+        return;
+      }
+      try {
+        await softDeleteWord(w.id);
+        li.remove();
+        const total = wordListItems.children.length;
+        wordCountEl.textContent = `${total}개`;
+        listEmpty.hidden = total > 0;
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    actions.appendChild(checkBtnEl);
+    actions.appendChild(delBtnEl);
+    li.appendChild(actions);
+  }
+
   return li;
 }
 
@@ -128,7 +315,7 @@ showDeletedBtn.addEventListener('click', async () => {
   deletedListItems.innerHTML = '';
   deletedEmpty.hidden = true;
   try {
-    const list = await fetchDeletedWords();
+    const list = await fetchDeletedWords(currentFolderId);
     deletedEmpty.hidden = list.length > 0;
     deletedEmpty.textContent = '삭제된 단어가 없어요.';
     list.forEach((w) => deletedListItems.appendChild(buildWordItem(w, true)));
@@ -148,7 +335,7 @@ async function loadMemorizeSession() {
   progressLabel.textContent = '· · ·';
   let words = [];
   try {
-    words = await fetchActiveWords();
+    words = await fetchActiveWords(currentFolderId);
   } catch (err) {
     console.error(err);
   }
@@ -246,7 +433,7 @@ deleteBtn.addEventListener('click', async () => {
   }
 });
 
-// ---------- Swipe to advance ----------
+// ---------- Swipe to navigate: 오른쪽 = 다음 단어, 왼쪽 = 이전 단어 ----------
 let dragging = false;
 let startX = 0;
 
@@ -269,12 +456,15 @@ wordCard.addEventListener('touchend', (e) => {
   const dx = e.changedTouches[0].clientX - startX;
   wordCard.style.transition = 'transform .25s ease, opacity .25s ease';
 
-  if (Math.abs(dx) > 70) {
+  const isForward = dx > 0;
+  const canMove = Math.abs(dx) > 70 && (isForward || currentIndex > 0);
+
+  if (canMove) {
     const flyX = dx > 0 ? window.innerWidth : -window.innerWidth;
     wordCard.style.transform = `translateX(${flyX}px) rotate(${dx / 30}deg)`;
     wordCard.style.opacity = '0';
     setTimeout(() => {
-      currentIndex += 1;
+      currentIndex += isForward ? 1 : -1;
       wordCard.style.transition = 'none';
       wordCard.style.transform = 'translateX(0) rotate(0)';
       wordCard.style.opacity = '0';

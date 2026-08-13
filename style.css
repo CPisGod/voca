@@ -38,6 +38,10 @@ body {
 
 .app-header {
   padding: max(20px, env(safe-area-inset-top)) 24px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 .app-title {
   font-weight: 700;
@@ -45,6 +49,30 @@ body {
   letter-spacing: 0.01em;
   color: #f2efe6;
   margin: 0;
+}
+
+.folder-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: #f2efe6;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  max-width: 55%;
+}
+.folder-switch span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.folder-switch-caret {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .screen-wrap {
@@ -179,9 +207,17 @@ body {
   border-radius: var(--radius-md);
   padding: 12px 16px;
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.word-list .w-info {
+  display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 .word-list .w-word {
   font-size: 16px;
@@ -193,10 +229,37 @@ body {
   font-size: 14px;
   color: var(--muted);
   text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.word-list .w-check {
-  color: var(--gold);
-  margin-left: 6px;
+.word-list .w-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.word-list .w-check-btn,
+.word-list .w-del-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+.word-list .w-check-btn.checked {
+  background: var(--gold);
+  color: #2a1f04;
+  border-color: var(--gold);
+}
+.word-list .w-del-btn.confirming {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
 }
 
 .empty-msg {
@@ -366,6 +429,78 @@ body {
   color: var(--muted);
   font-size: 16px;
   padding: 6px;
+}
+
+/* Folder modal */
+.folder-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.folder-item {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 6px 6px 6px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.folder-item.active {
+  border-color: var(--accent);
+}
+.folder-name-btn {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: #f2efe6;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 0;
+}
+.folder-item.active .folder-name-btn {
+  color: var(--accent);
+}
+.folder-rename-btn {
+  flex-shrink: 0;
+}
+.folder-rename-input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--bg);
+  color: #f2efe6;
+  font-family: inherit;
+  font-size: 15px;
+  margin: 4px 0 4px 6px;
+}
+
+.new-folder-form {
+  display: flex;
+  gap: 8px;
+}
+.new-folder-form input {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: #f2efe6;
+  font-family: inherit;
+  font-size: 15px;
+}
+.new-folder-form input::placeholder { color: #565b6b; }
+.btn-sm {
+  padding: 10px 18px;
+  margin-top: 0;
+  width: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

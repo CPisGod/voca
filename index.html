@@ -12,6 +12,10 @@
 <div class="app">
   <header class="app-header">
     <h1 class="app-title">단어장</h1>
+    <button id="folderSwitchBtn" class="folder-switch" type="button">
+      <span id="currentFolderName">폴더</span>
+      <span class="folder-switch-caret" aria-hidden="true">▾</span>
+    </button>
   </header>
 
   <main class="screen-wrap">
@@ -85,6 +89,20 @@
       <span class="nav-label">암기</span>
     </button>
   </nav>
+
+  <div id="folderModal" class="modal" hidden>
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2>폴더</h2>
+        <button id="closeFolderBtn" class="icon-btn" aria-label="닫기" type="button">✕</button>
+      </div>
+      <ul id="folderListItems" class="folder-list"></ul>
+      <form id="newFolderForm" class="new-folder-form" autocomplete="off">
+        <input type="text" id="newFolderInput" placeholder="새 폴더 이름" required>
+        <button type="submit" class="btn btn-primary btn-sm">추가</button>
+      </form>
+    </div>
+  </div>
 
   <div id="deletedModal" class="modal" hidden>
     <div class="modal-sheet">
