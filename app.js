@@ -433,7 +433,7 @@ deleteBtn.addEventListener('click', async () => {
   }
 });
 
-// ---------- Swipe to navigate: 오른쪽 = 다음 단어, 왼쪽 = 이전 단어 ----------
+// ---------- Swipe to navigate: 왼쪽 = 다음 단어, 오른쪽 = 이전 단어 ----------
 let dragging = false;
 let startX = 0;
 
@@ -456,7 +456,7 @@ wordCard.addEventListener('touchend', (e) => {
   const dx = e.changedTouches[0].clientX - startX;
   wordCard.style.transition = 'transform .25s ease, opacity .25s ease';
 
-  const isForward = dx > 0;
+  const isForward = dx < 0;
   const canMove = Math.abs(dx) > 70 && (isForward || currentIndex > 0);
 
   if (canMove) {
