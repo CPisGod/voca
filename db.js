@@ -1,7 +1,8 @@
 // db.js — Firestore 데이터 접근 함수 모음
 // 'words' 컬렉션의 각 문서: { word, meaning, checked, deleted, folderId, createdAt, deletedAt }
 // deleted는 소프트 삭제 플래그입니다 — 삭제해도 문서는 지워지지 않고 흔적이 남습니다.
-// 'folders' 컬렉션의 각 문서: { name, createdAt } — 단어를 묶어서 보관하는 폴더(단어장) 단위입니다.
+// 'folders' 컬렉션의 각 문서: { name, createdAt, deleted, deletedAt } — 단어를 묶어서 보관하는 폴더(단어장) 단위입니다.
+// 폴더도 단어와 같은 소프트 삭제 — deleted 플래그만 켜고 문서와 안의 단어는 DB에 그대로 남습니다.
 
 import { db } from './firebase-config.js';
 import {
@@ -35,9 +36,16 @@ export async function ensureDefaultFolder() {
 // 폴더 목록
 export async function fetchFolders() {
   const snap = await getDocs(foldersCol);
-  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const list = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((f) => !f.deleted);
   list.sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
   return list;
+}
+
+// 폴더 소프트 삭제 — deleted만 true로 바꾸고 폴더 안 단어는 건드리지 않음
+export async function softDeleteFolder(id) {
+  return updateDoc(doc(db, 'folders', id), { deleted: true, deletedAt: serverTimestamp() });
 }
 
 // 새 폴더 생성

@@ -1,6 +1,6 @@
 // app.js — 화면 전환 및 UI 로직
 import {
-  DEFAULT_FOLDER_ID, ensureDefaultFolder, fetchFolders, addFolder, renameFolder,
+  DEFAULT_FOLDER_ID, ensureDefaultFolder, fetchFolders, addFolder, renameFolder, softDeleteFolder,
   addWord, fetchActiveWords, fetchDeletedWords, setChecked, softDeleteWord,
 } from './db.js';
 
@@ -133,6 +133,42 @@ function buildFolderItem(f) {
 
   li.appendChild(nameBtn);
   li.appendChild(renameBtn);
+
+  // 폴더가 하나뿐이면 삭제 버튼을 만들지 않음 (항상 최소 1개는 남겨둠)
+  if (folders.length > 1) {
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'icon-btn folder-del-btn';
+    delBtn.setAttribute('aria-label', '폴더 삭제');
+    delBtn.textContent = '✕';
+    let confirmTimer = null;
+    delBtn.addEventListener('click', async () => {
+      // 첫 탭: 확인 상태로 전환 (3초 안에 한 번 더 눌러야 삭제)
+      if (!delBtn.classList.contains('confirming')) {
+        delBtn.classList.add('confirming');
+        delBtn.textContent = '삭제?';
+        confirmTimer = setTimeout(() => {
+          delBtn.classList.remove('confirming');
+          delBtn.textContent = '✕';
+        }, 3000);
+        return;
+      }
+      clearTimeout(confirmTimer);
+      delBtn.disabled = true;
+      try {
+        await softDeleteFolder(f.id);
+        await refreshFolders();
+        renderFolderModal();
+        refreshWordList();
+      } catch (err) {
+        console.error(err);
+        delBtn.disabled = false;
+        delBtn.classList.remove('confirming');
+        delBtn.textContent = '✕';
+      }
+    });
+    li.appendChild(delBtn);
+  }
   return li;
 }
 
