@@ -474,6 +474,18 @@ body {
 .folder-rename-btn {
   flex-shrink: 0;
 }
+.folder-del-btn {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  min-width: 34px;
+}
+.folder-del-btn.confirming {
+  background: var(--red);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 10px;
+}
 .folder-rename-input {
   flex: 1;
   padding: 10px 12px;
