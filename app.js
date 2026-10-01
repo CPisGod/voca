@@ -373,9 +373,15 @@ function renderCard() {
   cardControls.hidden = false;
   memorizeEmpty.hidden = true;
 
+  // 커버를 트랜지션 없이 즉시 덮은 뒤에 내용을 바꿔치기 — 그래야 커버가 서서히
+  // 불투명해지는 동안 다음 단어의 뜻이 비쳐 보이는 틈이 생기지 않음
+  wordCard.classList.add('no-anim');
   wordCard.classList.remove('revealed');
+  void wordCard.offsetWidth;
   cardWord.textContent = current.word;
   cardMeaning.textContent = current.meaning;
+  wordCard.classList.remove('no-anim');
+
   checkBtn.classList.toggle('checked', !!current.checked);
   progressLabel.textContent = `${currentIndex + 1} / ${total}`;
 }

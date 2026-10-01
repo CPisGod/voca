@@ -344,6 +344,10 @@ body {
   transform: translateY(6px);
 }
 
+.word-card.no-anim .card-cover {
+  transition: none;
+}
+
 .card-controls {
   display: flex;
   gap: 12px;
