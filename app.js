@@ -43,6 +43,8 @@ const cardCover = document.getElementById('cardCover');
 const checkBtn = document.getElementById('checkBtn');
 const deleteBtn = document.getElementById('deleteBtn');
 const memorizeEmpty = document.getElementById('memorizeEmpty');
+const checkedOnlyBtn = document.getElementById('checkedOnlyBtn');
+const hideModeBtn = document.getElementById('hideModeBtn');
 const cardControls = document.querySelector('.card-controls');
 
 // ---------- State ----------
@@ -51,6 +53,9 @@ let currentIndex = 0;
 let deleteConfirmTimeout = null;
 let folders = [];
 let currentFolderId = localStorage.getItem('voca_current_folder') || DEFAULT_FOLDER_ID;
+
+let checkedOnly = localStorage.getItem('voca_checked_only') === '1';
+let hideEnglish = localStorage.getItem('voca_hide_english') === '1';
 
 // ---------- Init ----------
 (async function init() {
@@ -375,6 +380,7 @@ async function loadMemorizeSession() {
   } catch (err) {
     console.error(err);
   }
+  if (checkedOnly) words = words.filter((w) => w.checked);
   shuffleQueue = shuffle(words);
   currentIndex = 0;
   renderCard();
@@ -399,7 +405,7 @@ function renderCard() {
     cardControls.hidden = true;
     memorizeEmpty.hidden = false;
     memorizeEmpty.textContent = total === 0
-      ? '암기할 단어가 없어요. 먼저 단어를 추가해주세요.'
+      ? (checkedOnly ? '체크한 단어가 없어요.' : '암기할 단어가 없어요. 먼저 단어를 추가해주세요.')
       : '모든 단어를 다 봤어요! "다시 섞기"로 한 번 더 볼 수 있어요.';
     progressLabel.textContent = `${total} / ${total}`;
     return;
@@ -414,8 +420,10 @@ function renderCard() {
   wordCard.classList.add('no-anim');
   wordCard.classList.remove('revealed');
   void wordCard.offsetWidth;
-  cardWord.textContent = current.word;
-  cardMeaning.textContent = current.meaning;
+  // 영어 가리기 모드: 한글 뜻을 위에 보여주고 영어 단어를 커버 아래에 둠
+  cardWord.textContent = hideEnglish ? current.meaning : current.word;
+  cardMeaning.textContent = hideEnglish ? current.word : current.meaning;
+  cardCover.firstElementChild.textContent = hideEnglish ? '탭해서 영어 보기' : '탭해서 뜻 보기';
   wordCard.classList.remove('no-anim');
 
   checkBtn.classList.toggle('checked', !!current.checked);
@@ -427,6 +435,28 @@ cardCover.addEventListener('click', () => {
 });
 
 reshuffleBtn.addEventListener('click', loadMemorizeSession);
+
+function syncOptionButtons() {
+  checkedOnlyBtn.classList.toggle('active', checkedOnly);
+  checkedOnlyBtn.setAttribute('aria-pressed', checkedOnly ? 'true' : 'false');
+  hideModeBtn.classList.toggle('active', hideEnglish);
+  hideModeBtn.textContent = hideEnglish ? '가리기: 영어' : '가리기: 한글 뜻';
+}
+syncOptionButtons();
+
+checkedOnlyBtn.addEventListener('click', () => {
+  checkedOnly = !checkedOnly;
+  localStorage.setItem('voca_checked_only', checkedOnly ? '1' : '0');
+  syncOptionButtons();
+  loadMemorizeSession();
+});
+
+hideModeBtn.addEventListener('click', () => {
+  hideEnglish = !hideEnglish;
+  localStorage.setItem('voca_hide_english', hideEnglish ? '1' : '0');
+  syncOptionButtons();
+  renderCard();
+});
 
 // ---------- Check (기록용 — 체크해도 셔플에 계속 포함) ----------
 checkBtn.addEventListener('click', async () => {
