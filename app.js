@@ -372,7 +372,31 @@ deletedModal.addEventListener('click', (e) => {
 });
 
 // ---------- Memorize session (암기창) ----------
-async function loadMemorizeSession() {
+// 섞인 순서와 현재 위치를 저장해 두고, "다시 섞기"를 누르기 전까지는 그대로 이어서 보여줌
+function sessionKey() {
+  return `voca_session_${currentFolderId}_${checkedOnly ? 1 : 0}`;
+}
+
+function saveSession() {
+  try {
+    localStorage.setItem(sessionKey(), JSON.stringify({
+      order: shuffleQueue.map((w) => w.id),
+      index: currentIndex,
+    }));
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function loadSavedSession() {
+  try {
+    return JSON.parse(localStorage.getItem(sessionKey()));
+  } catch (err) {
+    return null;
+  }
+}
+
+async function loadMemorizeSession(forceReshuffle = false) {
   progressLabel.textContent = '· · ·';
   let words = [];
   try {
@@ -381,8 +405,28 @@ async function loadMemorizeSession() {
     console.error(err);
   }
   if (checkedOnly) words = words.filter((w) => w.checked);
-  shuffleQueue = shuffle(words);
-  currentIndex = 0;
+
+  const saved = forceReshuffle === true ? null : loadSavedSession();
+  if (saved && Array.isArray(saved.order) && words.length > 0) {
+    const byId = new Map(words.map((w) => [w.id, w]));
+    const queue = [];
+    let index = 0;
+    saved.order.forEach((id, i) => {
+      const w = byId.get(id);
+      if (!w) return;
+      queue.push(w);
+      byId.delete(id);
+      if (i < saved.index) index++;
+    });
+    // 저장 이후 새로 생긴 단어는 맨 뒤에 붙임
+    shuffle([...byId.values()]).forEach((w) => queue.push(w));
+    shuffleQueue = queue;
+    currentIndex = Math.min(index, queue.length);
+  } else {
+    shuffleQueue = shuffle(words);
+    currentIndex = 0;
+  }
+  saveSession();
   renderCard();
 }
 
@@ -434,7 +478,7 @@ cardCover.addEventListener('click', () => {
   wordCard.classList.add('revealed');
 });
 
-reshuffleBtn.addEventListener('click', loadMemorizeSession);
+reshuffleBtn.addEventListener('click', () => loadMemorizeSession(true));
 
 function syncOptionButtons() {
   checkedOnlyBtn.classList.toggle('active', checkedOnly);
@@ -499,6 +543,7 @@ deleteBtn.addEventListener('click', async () => {
   try {
     await softDeleteWord(current.id);
     shuffleQueue.splice(currentIndex, 1);
+    saveSession();
     renderCard();
   } catch (err) {
     console.error(err);
@@ -537,6 +582,7 @@ wordCard.addEventListener('touchend', (e) => {
     wordCard.style.opacity = '0';
     setTimeout(() => {
       currentIndex += isForward ? 1 : -1;
+      saveSession();
       wordCard.style.transition = 'none';
       wordCard.style.transform = 'translateX(0) rotate(0)';
       wordCard.style.opacity = '0';
