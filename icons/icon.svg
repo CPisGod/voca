@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#14171f"/>
+  <!-- notebook shadow -->
+  <rect x="124" y="104" width="272" height="320" rx="28" fill="#0b0d12" opacity=".5" transform="translate(0 10)"/>
+  <!-- cover (spine side) -->
+  <rect x="120" y="92" width="272" height="320" rx="28" fill="#7c8ce8"/>
+  <!-- page -->
+  <rect x="164" y="92" width="228" height="320" rx="22" fill="#fbf7ee"/>
+  <rect x="164" y="92" width="22" height="320" fill="#efe9da"/>
+  <!-- spine rings -->
+  <g fill="#14171f">
+    <circle cx="142" cy="144" r="9"/><circle cx="142" cy="204" r="9"/>
+    <circle cx="142" cy="264" r="9"/><circle cx="142" cy="324" r="9"/><circle cx="142" cy="384" r="9"/>
+  </g>
+  <!-- word / meaning lines -->
+  <g stroke-linecap="round" stroke-width="16">
+    <line x1="214" y1="168" x2="324" y2="168" stroke="#22242b"/>
+    <line x1="214" y1="204" x2="294" y2="204" stroke="#a9afc3"/>
+    <line x1="214" y1="258" x2="340" y2="258" stroke="#22242b"/>
+    <line x1="214" y1="294" x2="274" y2="294" stroke="#a9afc3"/>
+    <line x1="214" y1="348" x2="304" y2="348" stroke="#22242b"/>
+  </g>
+  <!-- bookmark ribbon -->
+  <path d="M338 92h44v108l-22-16-22 16z" fill="#e3b23c"/>
+</svg>
