@@ -1,4 +1,4 @@
-const CACHE = 'voca-v1';
+const CACHE = 'voca-v2';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'db.js', 'firebase-config.js',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
