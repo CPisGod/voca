@@ -16,7 +16,11 @@ const foldersCol = collection(db, 'folders');
 export const DEFAULT_FOLDER_ID = 'default';
 
 // 기본 폴더가 없으면 만들어두고, 폴더가 지정되지 않은 기존 단어들을 그 안으로 옮김
+// 한 번 끝낸 기기에서는 전체 스캔을 다시 하지 않음 (Firestore 읽기 절약)
+const MIGRATED_KEY = 'voca_default_folder_ready';
+
 export async function ensureDefaultFolder() {
+  try { if (localStorage.getItem(MIGRATED_KEY) === '1') return; } catch (e) { /* ignore */ }
   const ref = doc(db, 'folders', DEFAULT_FOLDER_ID);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
@@ -31,6 +35,7 @@ export async function ensureDefaultFolder() {
     }
   });
   if (migrations.length) await Promise.all(migrations);
+  try { localStorage.setItem(MIGRATED_KEY, '1'); } catch (e) { /* ignore */ }
 }
 
 // 폴더 목록
@@ -60,6 +65,7 @@ export async function renameFolder(id, name) {
 
 // 새 단어 저장
 export async function addWord(word, meaning, folderId) {
+  activeCache = null;
   return addDoc(wordsCol, {
     word: word.trim(),
     meaning: meaning.trim(),
@@ -72,15 +78,17 @@ export async function addWord(word, meaning, folderId) {
 }
 
 // 활성 단어 목록 (추가창 리스트 / 암기창 셔플용)
+// 전체 활성 단어를 한 번만 읽어 메모리에 캐시하고, 단어 추가/삭제/복구 때만 무효화 — 읽기 횟수 절약
 // where 하나만 쓰고 정렬·폴더 필터링은 클라이언트에서 처리 — Firestore 복합 색인 설정이 필요 없게 하기 위함
+let activeCache = null;
+
 export async function fetchActiveWords(folderId) {
-  const q = query(wordsCol, where('deleted', '==', false));
-  const snap = await getDocs(q);
-  const list = snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((w) => w.folderId === folderId);
-  list.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-  return list;
+  if (!activeCache) {
+    const snap = await getDocs(query(wordsCol, where('deleted', '==', false)));
+    activeCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    activeCache.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+  }
+  return activeCache.filter((w) => w.folderId === folderId);
 }
 
 // 삭제된 단어 목록 (추가창의 '삭제된 단어 보기'용)
@@ -96,6 +104,7 @@ export async function fetchDeletedWords(folderId) {
 
 // 삭제된 단어 복구 (여러 개 한 번에)
 export async function restoreWords(ids) {
+  activeCache = null;
   return Promise.all(ids.map((id) =>
     updateDoc(doc(db, 'words', id), { deleted: false, deletedAt: null })));
 }
@@ -122,6 +131,7 @@ export async function setChecked(id, checked) {
 
 // 소프트 삭제 — deleted를 true로만 바꾸고 문서는 유지
 export async function softDeleteWord(id) {
+  activeCache = null;
   return updateDoc(doc(db, 'words', id), { deleted: true, deletedAt: serverTimestamp() });
 }
 
