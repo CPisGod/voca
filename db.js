@@ -94,6 +94,27 @@ export async function fetchDeletedWords(folderId) {
   return list;
 }
 
+// 삭제된 단어 복구 (여러 개 한 번에)
+export async function restoreWords(ids) {
+  return Promise.all(ids.map((id) =>
+    updateDoc(doc(db, 'words', id), { deleted: false, deletedAt: null })));
+}
+
+// 삭제된 폴더 목록
+export async function fetchDeletedFolders() {
+  const snap = await getDocs(foldersCol);
+  const list = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((f) => f.deleted);
+  list.sort((a, b) => toMillis(b.deletedAt) - toMillis(a.deletedAt));
+  return list;
+}
+
+// 삭제된 폴더 복구 — 안의 단어는 그대로 남아 있으므로 플래그만 되돌림
+export async function restoreFolder(id) {
+  return updateDoc(doc(db, 'folders', id), { deleted: false, deletedAt: null });
+}
+
 // 체크 여부 저장
 export async function setChecked(id, checked) {
   return updateDoc(doc(db, 'words', id), { checked });

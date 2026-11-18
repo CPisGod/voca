@@ -1,7 +1,8 @@
 // app.js — 화면 전환 및 UI 로직
 import {
   DEFAULT_FOLDER_ID, ensureDefaultFolder, fetchFolders, addFolder, renameFolder, softDeleteFolder,
-  addWord, fetchActiveWords, fetchDeletedWords, setChecked, softDeleteWord,
+  addWord, fetchActiveWords, fetchDeletedWords, setChecked, softDeleteWord, restoreWords,
+  fetchDeletedFolders, restoreFolder,
 } from './db.js';
 
 // ---------- DOM refs ----------
@@ -24,6 +25,16 @@ const deletedModal = document.getElementById('deletedModal');
 const deletedListItems = document.getElementById('deletedListItems');
 const deletedEmpty = document.getElementById('deletedEmpty');
 const closeDeletedBtn = document.getElementById('closeDeletedBtn');
+
+const searchInput = document.getElementById('searchInput');
+const searchEmpty = document.getElementById('searchEmpty');
+const restoreBar = document.getElementById('restoreBar');
+const selectAllDeleted = document.getElementById('selectAllDeleted');
+const restoreBtn = document.getElementById('restoreBtn');
+const toggleDeletedFoldersBtn = document.getElementById('toggleDeletedFoldersBtn');
+const deletedFoldersBox = document.getElementById('deletedFoldersBox');
+const deletedFolderItems = document.getElementById('deletedFolderItems');
+const deletedFoldersEmpty = document.getElementById('deletedFoldersEmpty');
 
 const folderSwitchBtn = document.getElementById('folderSwitchBtn');
 const currentFolderNameEl = document.getElementById('currentFolderName');
@@ -164,6 +175,7 @@ function buildFolderItem(f) {
         await softDeleteFolder(f.id);
         await refreshFolders();
         renderFolderModal();
+        if (!deletedFoldersBox.hidden) renderDeletedFolders();
         refreshWordList();
       } catch (err) {
         console.error(err);
@@ -225,6 +237,49 @@ folderModal.addEventListener('click', (e) => {
   if (e.target === folderModal) folderModal.hidden = true;
 });
 
+async function renderDeletedFolders() {
+  deletedFolderItems.innerHTML = '';
+  let list = [];
+  try {
+    list = await fetchDeletedFolders();
+  } catch (err) {
+    console.error(err);
+  }
+  deletedFoldersEmpty.hidden = list.length > 0;
+  list.forEach((f) => {
+    const li = document.createElement('li');
+    li.className = 'folder-item';
+    const name = document.createElement('span');
+    name.className = 'folder-name-btn';
+    name.textContent = f.name;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-primary btn-sm';
+    btn.textContent = '복구';
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        await restoreFolder(f.id);
+        await refreshFolders();
+        renderFolderModal();
+        renderDeletedFolders();
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+      }
+    });
+    li.appendChild(name);
+    li.appendChild(btn);
+    deletedFolderItems.appendChild(li);
+  });
+}
+
+toggleDeletedFoldersBtn.addEventListener('click', () => {
+  deletedFoldersBox.hidden = !deletedFoldersBox.hidden;
+  toggleDeletedFoldersBtn.textContent = deletedFoldersBox.hidden ? '삭제된 폴더 보기' : '삭제된 폴더 숨기기';
+  if (!deletedFoldersBox.hidden) renderDeletedFolders();
+});
+
 newFolderForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = newFolderInput.value.trim();
@@ -268,20 +323,31 @@ wordForm.addEventListener('submit', async (e) => {
 });
 
 // ---------- Word list (추가창) ----------
+let listWords = [];
+
 async function refreshWordList() {
-  wordListItems.innerHTML = '';
-  let words = [];
   try {
-    words = await fetchActiveWords(currentFolderId);
+    listWords = await fetchActiveWords(currentFolderId);
   } catch (err) {
     console.error(err);
+    listWords = [];
   }
-  wordCountEl.textContent = `${words.length}개`;
-  listEmpty.hidden = words.length > 0;
-  words.forEach((w) => {
-    wordListItems.appendChild(buildWordItem(w, false));
-  });
+  renderWordList();
 }
+
+function renderWordList() {
+  const q = searchInput.value.trim().toLowerCase();
+  const shown = q
+    ? listWords.filter((w) => w.word.toLowerCase().includes(q) || w.meaning.toLowerCase().includes(q))
+    : listWords;
+  wordListItems.innerHTML = '';
+  wordCountEl.textContent = q ? `${shown.length} / ${listWords.length}개` : `${listWords.length}개`;
+  listEmpty.hidden = listWords.length > 0;
+  searchEmpty.hidden = !(listWords.length > 0 && shown.length === 0);
+  shown.forEach((w) => wordListItems.appendChild(buildWordItem(w, false)));
+}
+
+searchInput.addEventListener('input', renderWordList);
 
 function buildWordItem(w, isDeleted) {
   const li = document.createElement('li');
@@ -334,10 +400,8 @@ function buildWordItem(w, isDeleted) {
       }
       try {
         await softDeleteWord(w.id);
-        li.remove();
-        const total = wordListItems.children.length;
-        wordCountEl.textContent = `${total}개`;
-        listEmpty.hidden = total > 0;
+        listWords = listWords.filter((x) => x.id !== w.id);
+        renderWordList();
       } catch (err) {
         console.error(err);
       }
@@ -351,19 +415,74 @@ function buildWordItem(w, isDeleted) {
   return li;
 }
 
+let deletedWords = [];
+const selectedDeleted = new Set();
+
+function updateRestoreUI() {
+  const n = selectedDeleted.size;
+  restoreBtn.disabled = n === 0;
+  restoreBtn.textContent = n ? `복구 (${n})` : '복구';
+  selectAllDeleted.checked = deletedWords.length > 0 && n === deletedWords.length;
+}
+
+function renderDeletedWords() {
+  deletedListItems.innerHTML = '';
+  deletedEmpty.hidden = deletedWords.length > 0;
+  restoreBar.hidden = deletedWords.length === 0;
+  deletedWords.forEach((w) => {
+    const li = buildWordItem(w, true);
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'w-select';
+    cb.setAttribute('aria-label', '복구할 단어 선택');
+    cb.checked = selectedDeleted.has(w.id);
+    cb.addEventListener('change', () => {
+      if (cb.checked) selectedDeleted.add(w.id); else selectedDeleted.delete(w.id);
+      updateRestoreUI();
+    });
+    li.prepend(cb);
+    deletedListItems.appendChild(li);
+  });
+  updateRestoreUI();
+}
+
 showDeletedBtn.addEventListener('click', async () => {
   deletedModal.hidden = false;
   deletedListItems.innerHTML = '';
   deletedEmpty.hidden = true;
+  restoreBar.hidden = true;
+  selectedDeleted.clear();
   try {
-    const list = await fetchDeletedWords(currentFolderId);
-    deletedEmpty.hidden = list.length > 0;
+    deletedWords = await fetchDeletedWords(currentFolderId);
     deletedEmpty.textContent = '삭제된 단어가 없어요.';
-    list.forEach((w) => deletedListItems.appendChild(buildWordItem(w, true)));
+    renderDeletedWords();
   } catch (err) {
     console.error(err);
+    deletedWords = [];
     deletedEmpty.hidden = false;
     deletedEmpty.textContent = '삭제된 단어를 불러오지 못했어요.';
+  }
+});
+
+selectAllDeleted.addEventListener('change', () => {
+  selectedDeleted.clear();
+  if (selectAllDeleted.checked) deletedWords.forEach((w) => selectedDeleted.add(w.id));
+  renderDeletedWords();
+});
+
+restoreBtn.addEventListener('click', async () => {
+  const ids = [...selectedDeleted];
+  if (!ids.length) return;
+  restoreBtn.disabled = true;
+  try {
+    await restoreWords(ids);
+    deletedWords = deletedWords.filter((w) => !selectedDeleted.has(w.id));
+    selectedDeleted.clear();
+    renderDeletedWords();
+    refreshWordList();
+  } catch (err) {
+    console.error(err);
+    updateRestoreUI();
   }
 });
 closeDeletedBtn.addEventListener('click', () => { deletedModal.hidden = true; });

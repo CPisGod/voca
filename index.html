@@ -53,8 +53,10 @@
           <span class="list-count" id="wordCount">0개</span>
           <button id="showDeletedBtn" class="link-btn" type="button">삭제된 단어 보기</button>
         </div>
+        <input type="search" id="searchInput" class="search-input" placeholder="단어 또는 뜻 검색" autocomplete="off">
         <ul id="wordListItems" class="word-list"></ul>
         <p id="listEmpty" class="empty-msg" hidden>아직 추가한 단어가 없어요. '단어 추가'에서 첫 단어를 등록해보세요.</p>
+        <p id="searchEmpty" class="empty-msg" hidden>검색 결과가 없어요.</p>
       </div>
     </section>
 
@@ -108,6 +110,11 @@
         <button id="closeFolderBtn" class="icon-btn" aria-label="닫기" type="button">✕</button>
       </div>
       <ul id="folderListItems" class="folder-list"></ul>
+      <button id="toggleDeletedFoldersBtn" class="link-btn" type="button">삭제된 폴더 보기</button>
+      <div id="deletedFoldersBox" hidden>
+        <ul id="deletedFolderItems" class="folder-list"></ul>
+        <p id="deletedFoldersEmpty" class="empty-msg" hidden>삭제된 폴더가 없어요.</p>
+      </div>
       <form id="newFolderForm" class="new-folder-form" autocomplete="off">
         <input type="text" id="newFolderInput" placeholder="새 폴더 이름" required>
         <button type="submit" class="btn btn-primary btn-sm">추가</button>
@@ -120,6 +127,10 @@
       <div class="modal-header">
         <h2>삭제된 단어</h2>
         <button id="closeDeletedBtn" class="icon-btn" aria-label="닫기" type="button">✕</button>
+      </div>
+      <div id="restoreBar" class="restore-bar" hidden>
+        <label class="select-all"><input type="checkbox" id="selectAllDeleted"> 전체 선택</label>
+        <button id="restoreBtn" class="btn btn-primary btn-sm" type="button" disabled>복구</button>
       </div>
       <ul id="deletedListItems" class="word-list"></ul>
       <p id="deletedEmpty" class="empty-msg" hidden>삭제된 단어가 없어요.</p>
