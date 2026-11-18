@@ -525,6 +525,7 @@ body {
 }
 .new-folder-form input {
   flex: 1;
+  min-width: 0;
   padding: 12px 14px;
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
@@ -566,3 +567,6 @@ body {
 .select-all { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .word-list .w-select, .select-all input { width: 20px; height: 20px; accent-color: var(--gold); flex-shrink: 0; }
 #deletedFoldersBox { margin-top: 8px; }
+#toggleDeletedFoldersBtn { display: block; margin: 12px 0 10px; }
+.folder-item .btn-sm { flex-shrink: 0; }
+.folder-item .folder-name-btn { flex: 1; text-align: left; }
